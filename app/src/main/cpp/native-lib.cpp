@@ -1,6 +1,7 @@
 // i hate keeden
 // c# original version: https://github.com/jeydevv/MonkeModMenu
 // do not skid this
+// DO not skid this shit bro
 #include <jni.h>
 #include <android/log.h>
 #include <thread>
