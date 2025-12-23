@@ -159,7 +159,7 @@ map<string, bool> toggleStates;
 map<string, vector<ModButton>> categories;
 map<string, std::function<void()>> toggleActions;
 
-
+// discord.gg/busclient
 
 
 static vector<const string> buttons = {
@@ -229,7 +229,7 @@ struct CosmeticItem {
     bool bothHandsHoldable;
     bool isNullItem;
 };
-
+// discord.gg/busclient
 struct SendOptionss {
     int DeliveryMode;
     bool Encrypt;
@@ -516,7 +516,7 @@ void InitCategories() {
                 playerForward.y = 0;
                 Vector3 playerRight = inst->GetBodyCollider()->GetTransform()->GetRight();
                 playerRight.y = 0;
-
+// discord.gg/busclient
                 Vector3 velocity = inputDirection.x * playerRight + rightJoystick.y * Vector3::up + inputDirection.z * playerForward;
                 velocity *= inst->GetTransform()->GetLocalScale().x * flySpeed;
                 rb->SetVelocity(Vector3::Lerp(rb->GetVelocity(), velocity, 0.12875f));
@@ -687,7 +687,7 @@ void InitCategories() {
                 visuals->SeeNetworkTriggers();
             }}
     };
-
+// discord.gg/busclient
     vector<ModButton> rigMods = {
             {"Back",    false, true,  []() {
                 currentCategory = "home";
@@ -699,14 +699,14 @@ void InitCategories() {
                 }
             }}
     };
-
+// discord.gg/busclient
     vector<ModButton> funMods = {
             { "Back",    false, true,  []() {
                 currentCategory = "home";
                 Draw();
             }},
     };
-
+// discord.gg/busclient
     vector<ModButton> soundMods = {
             {"Back",    false, true,  []() {
                 currentCategory = "home";
@@ -731,8 +731,8 @@ void InitCategories() {
                 vrrrig.PlayHandTap(31, true, 999999.f);
             }}
     };
-
-
+// discord.gg/busclient
+// discord.gg/busclient
     categories["Enabled"] = EnabledMods();
     categories["Movement"] = movementMods;
     categories["Room"] = roomMods;
@@ -749,7 +749,7 @@ void InitCategories() {
             "Sound",
             "Visual"
     };
-
+// discord.gg/busclient
     for (const string& name : catergories) {
         homePage.push_back({ name, false, true, [name]() {
             currentCategory = name;
@@ -758,32 +758,33 @@ void InitCategories() {
         }});
     }
 }
-
+// discord.gg/busclient
 void UpdateToggleStuff() {
     for (auto& [name, action] : toggleActions) {
         action();
     }
 }
+// discord.gg/busclient
 
 void UpdateFPS() {
     fps = 1.0f / Time::GetUnscaledDeltaTime();
 }
-
+// discord.gg/busclient
 
 void MotdAndCOC() {
     Color pink = Color(1.0f, 0.4f, 0.8f, 1.0f);
     Color white = Color(1.0f, 1.0f, 1.0f, 1.0f);
-
+// discord.gg/busclient
     static float fadeTimer = 0.0f;
     const float duration = 2.5f;
-
+// discord.gg/busclient
     fadeTimer += Time::GetDeltaTime();
     if (fadeTimer > duration) fadeTimer = 0.0f;
-
+// discord.gg/busclient
     float normalized = fabs((fadeTimer / duration) * 2.0f - 1.0f);
     Color current = Color::Lerp(pink, white, normalized);
     auto p = PhotonNetwork::GetPhotonServerSettings()->GetAppSettings();
-
+// discord.gg/busclient
     auto motdtextGO = GameObject::Find("COC Text");
     auto motd = GameObject::Find("motd");
     auto CodeOfConduct = GameObject::Find("CodeOfConduct");
@@ -809,7 +810,7 @@ void MotdAndCOC() {
         }
     }
 }
-
+// discord.gg/busclient
 void (*Update)(void*);
 void new_Update(void* instance) {
     MotdAndCOC();
@@ -825,7 +826,7 @@ void new_Update(void* instance) {
     if (maxJumpSpeed == 0) {
         maxJumpSpeed = GorillaLocomotion::Player::get_Instance()->GetMaxJumpSpeed();
     }
-
+// discord.gg/busclient
     float grip = XRInput::GetBoolFeature(BoolFeature::SecondaryButton, Controller::Left);
     if (grip) {
         gripDown = true;
@@ -1014,14 +1015,14 @@ void AddSidePageButton(bool left, const std::string& text)
     reinterpret_cast<Collider*>(newBtn->GetComponent(BoxCollider::GetType()))->SetIsTrigger(true);
     Rigidbody* rb = (Rigidbody*)newBtn->AddComponent(Rigidbody::GetType());
     rb->SetIsKinematic(true);
-
+// discord.gg/busclient
     newBtn->GetTransform()->SetParent(menu->GetTransform());
     newBtn->GetTransform()->SetRotation(Quaternion::FromEuler(Vector3(90.0f, 0.f, 0.f)));
     newBtn->GetTransform()->SetLocalScale(Vector3(0.04f, 0.6f, 0.12f));
     float xPos = left ? 0.5f : 0.5f;
     float yPos = left ? 0.6f : -0.6f;
     newBtn->GetTransform()->SetLocalPosition(Vector3(xPos, yPos, 0.f));
-
+// discord.gg/busclient
     Class BtnCollider = Class(O(""), O("BtnCollider"));
     newBtn->AddComponent(BtnCollider.GetMonoType());
     Field<Mono::String*> relatedText = BtnCollider.GetField(O("relatedText"));
@@ -1030,7 +1031,7 @@ void AddSidePageButton(bool left, const std::string& text)
     relatedText.Set(CreateMonoString(text));
     Renderer* renderer = reinterpret_cast<Renderer*>(newBtn->GetComponent(Renderer::GetType()));
     renderer->GetMaterial()->SetColor(Color(0.0f, 0.0f, 0.0f, 1.0f));
-
+// discord.gg/busclient
     //actual outline object coming into play
     GameObject* outlineObj = GameObject::CreatePrimitive(PrimitiveType::Cube);
     GameObject::Destroy(outlineObj->GetComponent(Rigidbody::GetType()));
@@ -1043,7 +1044,7 @@ void AddSidePageButton(bool left, const std::string& text)
     outlineObj->GetTransform()->SetLocalPosition(Vector3(0.f, 0.f, -0.05f)); // Very slightly behind
     outlineObj->GetTransform()->SetLocalRotation(Quaternion::identity);
     outlineObj->GetTransform()->SetLocalScale(Vector3(0.95f, 1.01f, 1.05f));
-
+// discord.gg/busclient
     //text stuff
     GameObject* titleObj = (GameObject*)GameObject::GetClass().CreateNewObjectParameters();
     titleObj->GetTransform()->SetParent(canvasObj->GetTransform());
