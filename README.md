@@ -6,7 +6,7 @@
 
 ---
 
-# <img src="Resources/GitHub/cone-emoji.png" height=26px> Bus Client  
+# Bus Client  
 
 Bus Client is a **feature-packed** mod menu for Gorilla Tag, built by me, [**circuit**](https://github.com/basicishot). Whether you just want mods, are a developer, or anything inbetween, this menu has you covered. Designed to be **as useful as possible**, it includes a variety of features and options that let you customize your modding experience to your heart's content.  
 
