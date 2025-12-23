@@ -25,21 +25,7 @@ By making this menu open-source, I'm giving **everyone** the opportunity to:
 
 Let's bring back the collaboration of modding. No paywalls, no secrets, no malware, just good mods.  
 
-</details>
-
-<details>
-  <summary><b>❓ Can I use your code?</b></summary>
-	
-**Of course!** But there's a catch: you gotta play fair. **[GPL-3.0 License](https://www.gnu.org/licenses/gpl-3.0.html) rules apply**, which means that if you use my code:  
-- Your project **must** also be open-source.  
-- Give credit where it's due.
-- No shady stuff.
-- **[Follow the license.](https://www.gnu.org/licenses/gpl-3.0.html)**
-
-> "You wouldn't steal a method."<br>
-> [🎥 *(Or would you?)*](https://www.youtube.com/watch?v=zMBqPdMzZ9E)
-
-</details>
+</details> 
 
 <details>
   <summary><b>💾 Installation</b></summary>
