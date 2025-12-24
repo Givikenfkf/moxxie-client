@@ -78,7 +78,3 @@ Need help or want to collaborate? Here are some of my sources of contact:
 > 
 > You should have received a copy of the GNU General Public License
 > along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-<p align="center">
-  <img src="Resources/GitHub/byebye.gif">
-</p>
