@@ -26,56 +26,70 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK, NDK and CMake
+      - name: Setup Android cmdline-tools & SDK root (no packages)
         uses: android-actions/setup-android@v3
         with:
           accept-android-sdk-licenses: true
-          # Use a block scalar to list packages one-per-line (no trailing commas)
-          packages: |
-            platform-tools
-            platforms;${{ env.ANDROID_PLATFORM }}
-            build-tools;${{ env.BUILD_TOOLS_VERSION }}
-            ndk;${{ env.NDK_VERSION }}
-            cmake;${{ env.CMAKE_VERSION }}
+          # don't pass `packages:` here — we'll install them explicitly in the next step
           cmdline-tools-version: '12.0'
 
-      - name: Verify sdkmanager and list installed packages (debug)
+      - name: Locate sdkmanager and install required SDK packages (one-by-one, robust)
+        shell: bash
         run: |
-          echo "ANDROID_SDK_ROOT = $ANDROID_SDK_ROOT"
-          if [ -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
-            "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --list || true
-          else
-            echo "sdkmanager not found at $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          set -euo pipefail
+          echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+          # Candidate sdkmanager locations to try
+          CANDIDATES=(
+            "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+            "$ANDROID_SDK_ROOT/cmdline-tools/12.0/bin/sdkmanager"
+            "$ANDROID_SDK_ROOT/tools/bin/sdkmanager"
+            "/usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager"
+            "/usr/local/lib/android/sdk/tools/bin/sdkmanager"
+          )
+
+          SDKMANAGER=""
+          for c in "${CANDIDATES[@]}"; do
+            if [ -x "$c" ]; then
+              SDKMANAGER="$c"
+              break
+            fi
+          done
+
+          if [ -z "$SDKMANAGER" ]; then
+            echo "Could not find sdkmanager in expected locations. Listing $ANDROID_SDK_ROOT:"
+            ls -R "$ANDROID_SDK_ROOT" || true
+            exit 1
           fi
 
-      - name: Fallback install packages with sdkmanager (retries once)
-        run: |
-          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          echo "Using sdkmanager at: $SDKMANAGER"
+          # packages to install — one item per array entry
           PACKS=(
             "platform-tools"
-            "platforms;${{ env.ANDROID_PLATFORM }}"
-            "build-tools;${{ env.BUILD_TOOLS_VERSION }}"
-            "ndk;${{ env.NDK_VERSION }}"
-            "cmake;${{ env.CMAKE_VERSION }}"
+            "platforms;$ANDROID_PLATFORM"
+            "build-tools;$BUILD_TOOLS_VERSION"
+            "ndk;$NDK_VERSION"
+            "cmake;$CMAKE_VERSION"
           )
-          if [ ! -x "$SDKMANAGER" ]; then
-            echo "sdkmanager not executable; trying alternative path..."
-            SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/12.0/bin/sdkmanager"
-          fi
-          echo "Using sdkmanager at: $SDKMANAGER"
+
+          # Install each package separately (with a retry)
           for pack in "${PACKS[@]}"; do
             echo "Installing: $pack"
-            # try twice in case of transient network hiccup
-            "$SDKMANAGER" "$pack" || { echo "Retrying $pack"; sleep 3; "$SDKMANAGER" "$pack"; } || { echo "Failed to install $pack"; exit 1; }
+            if ! "$SDKMANAGER" "$pack"; then
+              echo "First attempt failed for $pack — retrying after short sleep..."
+              sleep 3
+              if ! "$SDKMANAGER" "$pack"; then
+                echo "Failed to install $pack"
+                # show available remote list for debugging
+                echo "Available packages (partial):"
+                "$SDKMANAGER" --list | sed -n '1,200p' || true
+                exit 1
+              fi
+            fi
           done
-          # accept licenses as fallback
-          yes | "$SDKMANAGER" --licenses || true
 
-      - name: Accept Android SDK licenses (final fallback)
-        run: |
-          if [ -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
-            yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses || true
-          fi
+          # Accept licenses as final step
+          yes | "$SDKMANAGER" --licenses || true
+          echo "SDK packages installed."
 
       - name: Cache Gradle
         uses: actions/cache@v4
