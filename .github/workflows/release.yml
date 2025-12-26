@@ -10,11 +10,11 @@ jobs:
     name: Build native libs
     runs-on: ubuntu-latest
     env:
-      # adjust if you want to pin a different NDK version (see note below)
+      # Change to the exact NDK your project needs (match ndkVersion if present)
       NDK_VERSION: "25.2.9519653"
-      # optional: change target platform / build-tools if your project needs a specific API
       ANDROID_PLATFORM: "android-33"
       BUILD_TOOLS_VERSION: "33.0.2"
+      CMAKE_VERSION: "3.22.1"
 
     steps:
       - name: Checkout repository
@@ -29,25 +29,52 @@ jobs:
       - name: Setup Android SDK, NDK and CMake
         uses: android-actions/setup-android@v3
         with:
-          # IMPORTANT: boolean must be plain true (not 'yes' or quoted)
           accept-android-sdk-licenses: true
-          # Install the packages your build likely needs. Edit the ndk entry if your project requires a different version.
-          packages: >
-            platform-tools,
-            platforms;${{ env.ANDROID_PLATFORM }},
-            build-tools;${{ env.BUILD_TOOLS_VERSION }},
-            ndk;${{ env.NDK_VERSION }},
-            cmake;3.22.1
-          # optional: pin a particular cmdline-tools version (string)
+          # Use a block scalar to list packages one-per-line (no trailing commas)
+          packages: |
+            platform-tools
+            platforms;${{ env.ANDROID_PLATFORM }}
+            build-tools;${{ env.BUILD_TOOLS_VERSION }}
+            ndk;${{ env.NDK_VERSION }}
+            cmake;${{ env.CMAKE_VERSION }}
           cmdline-tools-version: '12.0'
 
-      - name: Accept Android SDK licenses (fallback)
-        # sdkmanager path is usually $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
+      - name: Verify sdkmanager and list installed packages (debug)
         run: |
-          if [ -n "$ANDROID_SDK_ROOT" ] && [ -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
-            yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          echo "ANDROID_SDK_ROOT = $ANDROID_SDK_ROOT"
+          if [ -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --list || true
           else
-            echo "sdkmanager not found at expected location: $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+            echo "sdkmanager not found at $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          fi
+
+      - name: Fallback install packages with sdkmanager (retries once)
+        run: |
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          PACKS=(
+            "platform-tools"
+            "platforms;${{ env.ANDROID_PLATFORM }}"
+            "build-tools;${{ env.BUILD_TOOLS_VERSION }}"
+            "ndk;${{ env.NDK_VERSION }}"
+            "cmake;${{ env.CMAKE_VERSION }}"
+          )
+          if [ ! -x "$SDKMANAGER" ]; then
+            echo "sdkmanager not executable; trying alternative path..."
+            SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/12.0/bin/sdkmanager"
+          fi
+          echo "Using sdkmanager at: $SDKMANAGER"
+          for pack in "${PACKS[@]}"; do
+            echo "Installing: $pack"
+            # try twice in case of transient network hiccup
+            "$SDKMANAGER" "$pack" || { echo "Retrying $pack"; sleep 3; "$SDKMANAGER" "$pack"; } || { echo "Failed to install $pack"; exit 1; }
+          done
+          # accept licenses as fallback
+          yes | "$SDKMANAGER" --licenses || true
+
+      - name: Accept Android SDK licenses (final fallback)
+        run: |
+          if [ -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses || true
           fi
 
       - name: Cache Gradle
@@ -68,7 +95,6 @@ jobs:
           ./gradlew -v
 
       - name: Build (assembleRelease)
-        # change to assembleDebug if you want debug build
         run: ./gradlew --no-daemon clean assembleRelease
 
       - name: Print where .so files might be
@@ -81,7 +107,6 @@ jobs:
       - name: Collect .so files for upload
         run: |
           mkdir -p native-libs
-          # preserve relative paths so multiple ABIs & locations are distinguishable
           find . -type f -name '*.so' -exec rsync -R {} native-libs/ \; || true
           echo "Collected files:"
           ls -R native-libs || true
