@@ -9,8 +9,15 @@ jobs:
   build:
     name: Build native libs
     runs-on: ubuntu-latest
+    env:
+      # adjust if you want to pin a different NDK version (see note below)
+      NDK_VERSION: "25.2.9519653"
+      # optional: change target platform / build-tools if your project needs a specific API
+      ANDROID_PLATFORM: "android-33"
+      BUILD_TOOLS_VERSION: "33.0.2"
+
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -19,48 +26,68 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK (tools + platform-tools)
+      - name: Setup Android SDK, NDK and CMake
         uses: android-actions/setup-android@v3
-        # you can optionally add `with: packages: 'platforms;android-33;build-tools;33.0.2'`
-        # but leaving default installs cmdline-tools + platform-tools which is enough for Gradle to work.
         with:
-          accept-android-sdk-licenses: 'yes'
+          # IMPORTANT: boolean must be plain true (not 'yes' or quoted)
+          accept-android-sdk-licenses: true
+          # Install the packages your build likely needs. Edit the ndk entry if your project requires a different version.
+          packages: >
+            platform-tools,
+            platforms;${{ env.ANDROID_PLATFORM }},
+            build-tools;${{ env.BUILD_TOOLS_VERSION }},
+            ndk;${{ env.NDK_VERSION }},
+            cmake;3.22.1
+          # optional: pin a particular cmdline-tools version (string)
+          cmdline-tools-version: '12.0'
 
-      - name: Install Android NDK and link to SDK
-        uses: nttld/setup-ndk@v1
+      - name: Accept Android SDK licenses (fallback)
+        # sdkmanager path is usually $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
+        run: |
+          if [ -n "$ANDROID_SDK_ROOT" ] && [ -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          else
+            echo "sdkmanager not found at expected location: $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          fi
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
         with:
-          # choose an NDK version; r26d is a recent example — you may change this if your project requires a specific NDK
-          ndk-version: r26d
-          link-to-sdk: true
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/gradle-wrapper.properties') }}-${{ hashFiles('**/*.gradle*','**/gradle.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
 
-      - name: Ensure gradle wrapper is executable
+      - name: Ensure gradlew is executable
         run: chmod +x ./gradlew
 
-      - name: Show Gradle & Java versions
+      - name: Show Java / Gradle versions (debug)
         run: |
-          ./gradlew -v
           java -version
+          ./gradlew -v
 
-      - name: Build (assemble release)
-        # Use whichever Gradle task fits your project: assembleDebug, assembleRelease, build, etc.
+      - name: Build (assembleRelease)
+        # change to assembleDebug if you want debug build
         run: ./gradlew --no-daemon clean assembleRelease
 
-      - name: Show built .so files (for debugging)
+      - name: Print where .so files might be
         run: |
-          echo "---- looking for .so files under app/build ----"
+          echo "==== Searching app/build for .so files ===="
           find app/build -type f -name "*.so" -print || true
-          echo "---- looking for .so files anywhere ----"
+          echo "==== Searching entire repo for .so files ===="
           find . -type f -name "*.so" -print || true
 
-      - name: Collect native libs and upload artifact
+      - name: Collect .so files for upload
         run: |
-          mkdir -p /tmp/native-libs
-          # copy all .so files (preserving directories) into one folder so upload-artifact picks them up
-          find . -type f -name '*.so' -exec rsync -R {} /tmp/native-libs/ \; || true
-          ls -R /tmp/native-libs || true
+          mkdir -p native-libs
+          # preserve relative paths so multiple ABIs & locations are distinguishable
+          find . -type f -name '*.so' -exec rsync -R {} native-libs/ \; || true
+          echo "Collected files:"
+          ls -R native-libs || true
 
       - name: Upload native-libs artifact
         uses: actions/upload-artifact@v4
         with:
           name: native-libs
-          path: /tmp/native-libs
+          path: native-libs
